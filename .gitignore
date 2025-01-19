@@ -1,0 +1,11 @@
+# Exclude directoare inutile
+__pycache__/
+*.pyc
+*.pyo
+*.log
+.DS_Store
+
+# Exclude fișiere mari sau temporare
+*.csv
+model_training/datasets/
+model_training/saved_models/
