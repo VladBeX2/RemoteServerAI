@@ -8,4 +8,14 @@ __pycache__/
 # Exclude fișiere mari sau temporare
 *.csv
 model_training/datasets/
-model_training/saved_models/
+*saved_models/
+FakeNewsNet_scrape/
+*.ipynb_checkpoints/
+logs*/
+results*/
+*.bin
+*.txt
+*checkpoint*/
+*chkpts*/
+model_training/notebooks/TextAttack/roberta_adv_finetuned
+model_training/notebooks/welFake_nb/roberta_kfold
