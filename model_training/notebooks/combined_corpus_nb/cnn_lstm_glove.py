@@ -11,12 +11,13 @@ from nltk.stem import WordNetLemmatizer
 
 import tensorflow as tf
 from tensorflow.keras.preprocessing.text import Tokenizer
-from tensorflow.keras.preprocessing.sequence import pad_sequences
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Embedding, LSTM, Dense, Conv1D, GlobalMaxPooling1D, MaxPooling1D
-from tensorflow.keras.callbacks import EarlyStopping
+from keras.preprocessing.sequence import pad_sequences
+from keras.models import Sequential
+from keras.layers import Embedding, LSTM, Dense, Conv1D, GlobalMaxPooling1D, MaxPooling1D
+from keras.callbacks import EarlyStopping
 
 from sklearn.metrics import classification_report
+import pickle
 
 # Setări pentru reproducibilitate
 np.random.seed(42)
@@ -112,6 +113,10 @@ def main():
     max_num_words = 20000
     tokenizer = Tokenizer(num_words=max_num_words)
     tokenizer.fit_on_texts(X_train_texts)
+
+    with open("saved_models/cnn_lstm_glove/tokenizer.pkl", "wb") as handle:
+        pickle.dump(tokenizer, handle)
+
     X_train_seq = tokenizer.texts_to_sequences(X_train_texts)
     X_test_seq = tokenizer.texts_to_sequences(X_test_texts)
 

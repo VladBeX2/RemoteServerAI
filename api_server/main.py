@@ -26,14 +26,15 @@ ROBERTA_MODEL_PATH = os.path.join(MODELS_DIR, "roberta_v3","roberta_v3_torch_mod
 EMBEDDING_DIM = 300
 
 device = torch.device("cpu")
+device_bert = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 bert_tok = BertTokenizer.from_pretrained(BERT_TOKENIZER_PATH)
 bert_model = BertForSequenceClassification.from_pretrained(BERT_MODEL_PATH)
-bert_model.to(device).eval()
+bert_model.to(device_bert).eval()
 
 roberta_tok = RobertaTokenizer.from_pretrained(ROBERTA_TOKENIZER_PATH)
 roberta_model = RobertaForSequenceClassification.from_pretrained(ROBERTA_MODEL_PATH)
-roberta_model.to(device).eval()
+roberta_model.to(device_bert).eval()
 
 try:
     embeddings_index = load_glove_embeddings(GLOVE_PATH)
@@ -59,7 +60,7 @@ def predict(data: InputData):
             max_length=512,
             return_tensors="pt"
         )
-        toks = {k: v.to(device) for k, v in toks.items()}
+        toks = {k: v.to(device_bert) for k, v in toks.items()}
         with torch.no_grad():
             out   = bert_model(**toks)
             logits = out.logits[0]
@@ -80,7 +81,7 @@ def predict(data: InputData):
             max_length=512,
             return_tensors="pt"
         )
-        toks = {k: v.to(device) for k, v in toks.items()}
+        toks = {k: v.to(device_bert) for k, v in toks.items()}
         with torch.no_grad():
             out   = roberta_model(**toks)
             logits = out.logits[0]
@@ -167,62 +168,73 @@ def stop_retrain():
     _retrain_proc = None
     return {"status": "stopped"}
 
-class ExplainInput(BaseModel):
-    text: str
+@app.post("/predict/explain")
+def explain_with_lime(data: InputData):
+    print("REceived explanaition request")
+    text = data.text.strip()
+    if not text:
+        raise HTTPException(status_code=400, detail="Empty text received.")
 
+    if data.model_name == "BERT":
+        def classifier_fn(texts:list[str]) -> np.ndarray:
+            cleaned = [wordopt_lite(t) for t in texts]
+            toks = bert_tok(
+                cleaned,   
+                padding="max_length",
+                truncation=True,
+                max_length=512,
+                return_tensors="pt"
+            )
+            toks = {k: v.to(device_bert) for k, v in toks.items()}
+            with torch.no_grad():
+                out = bert_model(**toks)
+                probs = torch.softmax(out.logits, dim=-1)
+            return probs.cpu().numpy()
+    elif data.model_name == "ROBERTA":
+        def classifier_fn(texts:list[str]) -> np.ndarray:
+            cleaned = [wordopt_lite(t) for t in texts]
+            toks = roberta_tok(
+                cleaned,   
+                padding="max_length",
+                truncation=True,
+                max_length=512,
+                return_tensors="pt"
+            )
+            toks = {k: v.to(device_bert) for k, v in toks.items()}
+            with torch.no_grad():
+                out = roberta_model(**toks)
+                probs = torch.softmax(out.logits, dim=-1)
+            return probs.cpu().numpy()
+    else:
+        cleaned= wordopt(data.text)
+        fname = f"{data.model_name}_GloVe_300d.joblib"
+        model_path = os.path.join(MODELS_DIR, fname)
+        model = joblib.load(model_path)
+        def classifier_fn(texts:list[str]) -> np.ndarray:
+            cleaned = [wordopt(t) for t in texts]
+            X = glove_transform(cleaned,embeddings_index,EMBEDDING_DIM)
+            if hasattr(model, "predict_proba"):
+                probs = model.predict_proba(X)
+            
+            df = model.decision_function(X)
+            scores = np.vstack([-df,df]).T
+            exp = np.exp(scores)
+            return exp / np.sum(exp, axis=1, keepdims=True)
 
+    explainer = LimeTextExplainer(class_names=["Fake", "Real"])
+    explanation = explainer.explain_instance(
+        text,
+        classifier_fn,
+        num_features=10,
+        num_samples=500
+    )
 
-@app.post("/explain")
-def explain_with_lime(data: ExplainInput):
-    try:
-        text = data.text.strip()
-        if not text:
-            raise HTTPException(status_code=400, detail="Empty text received.")
+    # Generăm HTML și îl stilizăm
+    html_data = explanation.as_html()
+    html_data = html_data.replace(
+        "<body>",
+        '<body style="background-color:white; color:black;">'
+    )
+    html_base64 = base64.b64encode(html_data.encode("utf-8")).decode("utf-8")
 
-        # Wrapper pentru LIME
-        def predict_proba(texts):
-            try:
-                inputs = tokenizer(
-                    texts,
-                    max_length=128,
-                    padding="max_length",
-                    truncation=True,
-                    return_tensors="tf"
-                )
-
-                outputs = model(inputs)
-                logits = outputs.logits.numpy()  # shape (N, 1)
-                probs_fake = tf.nn.sigmoid(logits).numpy().squeeze()  # shape (N,)
-                probs_real = 1 - probs_fake
-
-                # Return [[real, fake], ...]
-                result = [[float(real), float(fake)] for real, fake in zip(probs_real, probs_fake)]
-                print("✅ Final probabilities (real, fake):", result)
-                return result
-
-            except Exception as e:
-                print("❌ predict_proba exception:", e)
-                raise
-
-
-        explainer = LimeTextExplainer(class_names=["Fake", "Real"])
-        explanation = explainer.explain_instance(
-            text_instance=text,
-            classifier_fn=predict_proba,
-            num_features=10,
-            num_samples=500
-        )
-
-        # Generăm HTML și îl stilizăm
-        html_data = explanation.as_html(labels=(1,))
-        html_data = html_data.replace(
-            "<body>",
-            '<body style="background-color:white; color:black;">'
-        )
-        html_base64 = base64.b64encode(html_data.encode("utf-8")).decode("utf-8")
-
-        return JSONResponse(content={"explanation_html": html_base64})
-
-    except Exception as e:
-        print("❌ LIME exception:", str(e))
-        raise HTTPException(status_code=500, detail=f"LIME explanation failed: {str(e)}")
+    return JSONResponse(content={"explanation_html": html_base64})

@@ -19,3 +19,4 @@ results*/
 *chkpts*/
 model_training/notebooks/TextAttack/roberta_adv_finetuned
 model_training/notebooks/welFake_nb/roberta_kfold
+api_server/licenta-deep-venv/
