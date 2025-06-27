@@ -2,28 +2,35 @@ from fastapi import FastAPI,HTTPException
 from pydantic import BaseModel
 from transformers import BertForSequenceClassification, BertTokenizer,RobertaTokenizer, RobertaForSequenceClassification
 from lime.lime_text import LimeTextExplainer
-import tensorflow as tf
 from fastapi.responses import JSONResponse
 import matplotlib.pyplot as plt
 import base64
 from io import BytesIO
 from newspaper import Article
 import os, subprocess,signal
-from typing import Optional
+from typing import Optional, List, Dict
 from utils import wordopt,wordopt_lite, glove_transform, load_glove_embeddings
 import numpy as np
 import joblib
 import torch
+import sys
+import threading
+import signal
+import json
+import gc
 
 app = FastAPI()
 
 GLOVE_PATH = "../model_training/datasets/GloVe_embeddings/glove.6B.300d.txt"
 MODELS_DIR = "../model_training/notebooks/combined_corpus_nb/saved_models"
+ADDITIONAL_NEWS_PATH= "additional_news.json"
 BERT_TOKENIZER_PATH = os.path.join(MODELS_DIR, "bert_v2","bert_v2_tokenizer")
 BERT_MODEL_PATH = os.path.join(MODELS_DIR, "bert_v2","bert_v2_torch_model")
 ROBERTA_TOKENIZER_PATH = os.path.join(MODELS_DIR, "roberta_v3","roberta_v3_tokenizer")
-ROBERTA_MODEL_PATH = os.path.join(MODELS_DIR, "roberta_v3","roberta_v3_torch_model")
+ROBERTA_MODEL_PATH = "../model_training/notebooks/TextAttack/roberta_adv_finetuned"
 EMBEDDING_DIM = 300
+LOG_DIR = "retrain_logs"
+os.makedirs(LOG_DIR, exist_ok=True)
 
 device = torch.device("cpu")
 device_bert = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -36,14 +43,65 @@ roberta_tok = RobertaTokenizer.from_pretrained(ROBERTA_TOKENIZER_PATH)
 roberta_model = RobertaForSequenceClassification.from_pretrained(ROBERTA_MODEL_PATH)
 roberta_model.to(device_bert).eval()
 
-try:
-    embeddings_index = load_glove_embeddings(GLOVE_PATH)
-    print("✅ GloVe embeddings loaded successfully.")
-except Exception as e:
-    print("❌ Failed to load GloVe embeddings:", e)
-    embeddings_index = None
 
-_retrain_proc: Optional[subprocess.Popen] = None
+
+SCRIPTS = [
+    "scripts/Basic_Alg_GloVe.py",
+    "scripts/Basic_algorithms_v2.py",
+    "scripts/bert_v2.py",
+    "scripts/roberta_v3.py",
+]
+
+_retrain_thread: Optional[threading.Thread]  = None
+_current_proc: Optional[subprocess.Popen]= None
+_error_flag: bool = False
+_done_flag: bool = False
+_embeddings_index: Optional[Dict[str, List[float]]] = None
+
+def get_glove_index() -> Dict[str, List[float]]:
+    global _embeddings_index
+    if _embeddings_index is None:
+        print("🕐 Loading GloVe embeddings into memory…")
+        _embeddings_index = load_glove_embeddings(GLOVE_PATH, EMBEDDING_DIM)
+        print(f"✅ Loaded {_embeddings_index and len(_embeddings_index)} tokens.")
+    return _embeddings_index  # type: ignore
+
+def unload_glove_index() -> None:
+    global _embeddings_index
+    _embeddings_index = None
+    gc.collect()
+    print("🗑 Freed GloVe embeddings from memory.")
+
+
+def _run_queue():
+    global _current_proc,_error_flag,_done_flag
+
+    for script in SCRIPTS:
+        if _error_flag:
+            break
+
+        if not os.path.exists(script):
+            continue
+
+        log_out = open(os.path.join(LOG_DIR, f"{os.path.basename(script)}.out"), "w")
+        log_err = open(os.path.join(LOG_DIR, f"{os.path.basename(script)}.err"), "w")
+        print(f"Starting script: {script}")
+        _current_proc = subprocess.Popen(
+            ["python", script],
+            stdout=log_out,
+            stderr=log_err,
+            text=True
+        )
+
+        ret = _current_proc.wait()
+        if ret != 0:
+            _error_flag = True
+            print(f"❌ Error in script {script}")
+
+            break
+
+    _current_proc = None
+    _done_flag = True
 
 class InputData(BaseModel):
     text: str
@@ -94,78 +152,94 @@ def predict(data: InputData):
         return {"label": label, "probability": prob}
 
     else:
-        try:
-            text = wordopt(data.text)
-            fname = f"{data.model_name}_GloVe_300d.joblib"
-            model_path = os.path.join(MODELS_DIR, fname)
-            model = joblib.load(model_path)
-        except:
-            raise HTTPException(status_code=500, detail="Failed to load model.")
-        
-        X_vec  = glove_transform([text],embeddings_index,EMBEDDING_DIM)
+        text = wordopt(data.text)
+        fname = f"{data.model_name}_GloVe_300d.joblib"
+        model_path = os.path.join(MODELS_DIR, fname)
+        if not os.path.exists(model_path):
+            raise HTTPException(status_code=404, detail="Model not found.")
+        model = joblib.load(model_path)
+        embeddings_index = get_glove_index()
+        X_vec = glove_transform([text], embeddings_index, EMBEDDING_DIM)
         pred = model.predict(X_vec)[0]
         prob = None
         if (hasattr(model, "predict_proba")):
             prob = float(model.predict_proba(X_vec)[0][pred])
 
+        unload_glove_index()
         label = "REAL" if pred == 1 else "FAKE"
         return {
             "label": label,
             "probability": prob
         }
-
-
+class Example(BaseModel):
+    text: str
+    label: int
+class RetrainData(BaseModel):
+    examples: List[Example]
 
 @app.post("/predict/retrain")
-def start_retrain():
-    global _retrain_proc
-    # if already running, just return status
-    if _retrain_proc and _retrain_proc.poll() is None:
-        return {"status": "running"}
+def start_retrain(payload: RetrainData):
+    examples = payload.dict().get("examples")
+    if not examples:
+        raise HTTPException(status_code=400, detail="No examples provided.")
 
-    # otherwise kick off the job
-    try:
-        _retrain_proc = subprocess.Popen(
-            ["python", "train.py"],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to start retrain: {e}")
+    global _retrain_thread, _error_flag,_done_flag
+
+    with open(ADDITIONAL_NEWS_PATH, "w") as f:
+        json.dump(examples,f)
+
+    if _retrain_thread and _retrain_thread.is_alive():
+        return {"status": "running"}
+    
+    _error_flag = False
+    _done_flag = False
+    _retrain_thread = threading.Thread(target=_run_queue,daemon=True)
+    _retrain_thread.start()
 
     return {"status": "started"}
     
 @app.get("/predict/retrain/status")
 def retrain_status():
-    global _retrain_proc
-    if not _retrain_proc:
+    global _retrain_thread, _error_flag,_done_flag
+
+    if _retrain_thread is None:
         return {"status": "none"}
-
-    code = _retrain_proc.poll()
-    if code is None:
-        # still running
+    
+    if _retrain_thread.is_alive():
         return {"status": "running"}
+    
+    if _error_flag:
+        _retrain_thread = None
+        _error_flag = False
+        return {"status": "error"}
+    
+    if _done_flag:
+        _retrain_thread = None
+        _done_flag = False
+        return {"status": "success"}
 
-    # process finished (code ≥ 0)
-    out, err = _retrain_proc.communicate()
-    status = "success" if code == 0 else "failed"
-    # clear handle so next /retrain can restart
-    _retrain_proc = None
-    return {"status": status}
+    _retrain_thread = None
+    return {"status": "none"}
 
 
 @app.post("/predict/retrain/stop")
 def stop_retrain():
-    global _retrain_proc
-    if not _retrain_proc or _retrain_proc.poll() is not None:
-        return {"status": "none"}
+    global _current_proc, _retrain_thread, _error_flag
 
+    if not _retrain_thread or not _retrain_thread.is_alive():
+        return {"status": "none"}
+    
     try:
-        os.kill(_retrain_proc.pid, signal.SIGTERM)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Could not stop process: {e}")
-    _retrain_proc = None
+        if _current_proc and _current_proc.poll() is None:
+            _current_proc.terminate()
+    except:
+        pass
+    
+    _current_proc = None
+    _retrain_thread = None
+    _error_flag = False
+    _done_flag = False
+
     return {"status": "stopped"}
 
 @app.post("/predict/explain")
@@ -214,12 +288,13 @@ def explain_with_lime(data: InputData):
             cleaned = [wordopt(t) for t in texts]
             X = glove_transform(cleaned,embeddings_index,EMBEDDING_DIM)
             if hasattr(model, "predict_proba"):
-                probs = model.predict_proba(X)
+                return model.predict_proba(X)
             
-            df = model.decision_function(X)
-            scores = np.vstack([-df,df]).T
-            exp = np.exp(scores)
-            return exp / np.sum(exp, axis=1, keepdims=True)
+            if hasattr(model, "decision_function"):
+                df = model.decision_function(X)
+                scores = np.vstack([-df,df]).T
+                exp = np.exp(scores)
+                return exp / np.sum(exp, axis=1, keepdims=True)
 
     explainer = LimeTextExplainer(class_names=["Fake", "Real"])
     explanation = explainer.explain_instance(

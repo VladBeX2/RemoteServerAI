@@ -1,0 +1,54 @@
+Traceback (most recent call last):
+  File "/home/vlad.cristescu/Licenta/api_server/scripts/Basic_algorithms_v2.py", line 517, in <module>
+    main()
+  File "/home/vlad.cristescu/Licenta/api_server/scripts/Basic_algorithms_v2.py", line 485, in main
+    results = Parallel(n_jobs=2)(
+  File "/home/vlad.cristescu/miniconda3/envs/licenta_api/lib/python3.9/site-packages/joblib/parallel.py", line 2071, in __call__
+    return output if self.return_generator else list(output)
+  File "/home/vlad.cristescu/miniconda3/envs/licenta_api/lib/python3.9/site-packages/joblib/parallel.py", line 1681, in _get_outputs
+    yield from self._retrieve()
+  File "/home/vlad.cristescu/miniconda3/envs/licenta_api/lib/python3.9/site-packages/joblib/parallel.py", line 1799, in _retrieve
+    time.sleep(0.01)
+KeyboardInterrupt
+return [func(*args, **kwargs) for func, args, kwargs in self.items]
+  File "/home/vlad.cristescu/Licenta/api_server/scripts/Basic_algorithms_v2.py", line 214, in train_evaluate_with_cv
+    plt.savefig(learning_curve_path)
+  File "/home/vlad.cristescu/miniconda3/envs/licenta_api/lib/python3.9/site-packages/matplotlib/pyplot.py", line 1228, in savefig
+    res = fig.savefig(*args, **kwargs)  # type: ignore[func-returns-value]
+  File "/home/vlad.cristescu/miniconda3/envs/licenta_api/lib/python3.9/site-packages/matplotlib/figure.py", line 3395, in savefig
+    self.canvas.print_figure(fname, **kwargs)
+  File "/home/vlad.cristescu/miniconda3/envs/licenta_api/lib/python3.9/site-packages/matplotlib/backend_bases.py", line 2204, in print_figure
+    result = print_method(
+  File "/home/vlad.cristescu/miniconda3/envs/licenta_api/lib/python3.9/site-packages/matplotlib/backend_bases.py", line 2054, in <lambda>
+    print_method = functools.wraps(meth)(lambda *args, **kwargs: meth(
+  File "/home/vlad.cristescu/miniconda3/envs/licenta_api/lib/python3.9/site-packages/matplotlib/backends/backend_agg.py", line 496, in print_png
+    self._print_pil(filename_or_obj, "png", pil_kwargs, metadata)
+  File "/home/vlad.cristescu/miniconda3/envs/licenta_api/lib/python3.9/site-packages/matplotlib/backends/backend_agg.py", line 445, in _print_pil
+    mpl.image.imsave(
+  File "/home/vlad.cristescu/miniconda3/envs/licenta_api/lib/python3.9/site-packages/matplotlib/image.py", line 1676, in imsave
+    image.save(fname, **pil_kwargs)
+  File "/home/vlad.cristescu/miniconda3/envs/licenta_api/lib/python3.9/site-packages/PIL/Image.py", line 2576, in save
+    fp = builtins.open(filename, "w+b")
+FileNotFoundError: [Errno 2] No such file or directory: '../saved_models/optimized/KNN_Bag_of_Words_(1-2gram)_learning_curve.png'
+"""
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/vlad.cristescu/Licenta/api_server/scripts/Basic_algorithms_v2.py", line 517, in <module>
+    main()
+  File "/home/vlad.cristescu/Licenta/api_server/scripts/Basic_algorithms_v2.py", line 485, in main
+    results = Parallel(n_jobs=2)(
+  File "/home/vlad.cristescu/miniconda3/envs/licenta_api/lib/python3.9/site-packages/joblib/parallel.py", line 2071, in __call__
+    return output if self.return_generator else list(output)
+  File "/home/vlad.cristescu/miniconda3/envs/licenta_api/lib/python3.9/site-packages/joblib/parallel.py", line 1681, in _get_outputs
+    yield from self._retrieve()
+  File "/home/vlad.cristescu/miniconda3/envs/licenta_api/lib/python3.9/site-packages/joblib/parallel.py", line 1783, in _retrieve
+    self._raise_error_fast()
+  File "/home/vlad.cristescu/miniconda3/envs/licenta_api/lib/python3.9/site-packages/joblib/parallel.py", line 1858, in _raise_error_fast
+    error_job.get_result(self.timeout)
+  File "/home/vlad.cristescu/miniconda3/envs/licenta_api/lib/python3.9/site-packages/joblib/parallel.py", line 757, in get_result
+    return self._return_or_raise()
+  File "/home/vlad.cristescu/miniconda3/envs/licenta_api/lib/python3.9/site-packages/joblib/parallel.py", line 772, in _return_or_raise
+    raise self._result
+FileNotFoundError: [Errno 2] No such file or directory: '../saved_models/optimized/KNN_Bag_of_Words_(1-2gram)_learning_curve.png'

@@ -1,0 +1,59 @@
+Dimensiunea inițială a datelor: (85270, 7)
+Dimensiunea după filtrare: (81365, 7)
+
+==== Analiza setului de date ====
+Număr total de înregistrări: 81365
+Coloane disponibile: ['Statement', 'Label', 'Statement_length', 'word_count', 'char_count', 'avg_word_length', 'language']
+
+Distribuția claselor:
+Label
+1    53.924906
+0    46.075094
+Name: proportion, dtype: float64
+
+Lungimea medie a textelor: 4127.47 caractere
+Lungimea minimă: 143 caractere
+Lungimea maximă: 32759 caractere
+
+Lungimea medie a textelor pe clase:
+Label
+0    3557.748753
+1    4614.253601
+Name: text_length, dtype: float64
+
+Verificare cuvinte comune în fiecare clasă...
+
+Cele mai comune cuvinte în știri false:
+[(',', 33178), ('.', 27308), ("'", 2731), ('?', 2430), ('said', 1801), ('one', 1622), ('people', 1570), ('would', 1559), ('government', 1377), ('u', 1280), ('state', 1270), ('time', 1258), ("'s", 1243), ('like', 1175), ('year', 1141), ('!', 1077), ('american', 1013), ('new', 990), ('even', 962), ('also', 918)]
+
+Cele mai comune cuvinte în știri reale:
+[(',', 43711), ('.', 28387), ('said', 3968), ('â€', 2783), ('â€\x9d', 2746), ('one', 1936), ('would', 1810), ('year', 1804), ('new', 1559), ('“', 1505), ("'", 1475), ('”', 1426), ('time', 1422), ('people', 1422), ('mr.', 1323), ("'s", 1239), ('?', 1231), ('like', 1188), ('also', 1168), ('trump', 1153)]
+
+Numărul de perechi de texte cu similaritate > 0.9: 296
+
+Exemple de texte foarte similare:
+
+Text 1 (Label 0):
+Germanwings plane crash: major media cover-upJon Rappoport Airbus A 320 flight from Barcelona to Dus...
+Text 2 (Label 0):
+The US Just Declared Russia a Greater Threat than ISIS Paving the Way for Deadly Perpetual WarBy Mat...
+
+Text 1 (Label 0):
+Germanwings plane crash: major media cover-upJon Rappoport Airbus A 320 flight from Barcelona to Dus...
+Text 2 (Label 0):
+Brexit Aftermath - Heres What Will Happen NextBy Brandon Smith In my post-Brexit commentary, which c...
+
+Text 1 (Label 0):
+Germanwings plane crash: major media cover-upJon Rappoport Airbus A 320 flight from Barcelona to Dus...
+Text 2 (Label 0):
+Australia: mandatory vaccines and the secret treatyBy Jon Rappoport Globalism is the New World Order...
+
+Text 1 (Label 0):
+Germanwings plane crash: major media cover-upJon Rappoport Airbus A 320 flight from Barcelona to Dus...
+Text 2 (Label 0):
+Boston bombing: citizen video-analysts create major problems for controlled mediaJon Rappoport Youve...
+
+Text 1 (Label 0):
+Germanwings plane crash: major media cover-upJon Rappoport Airbus A 320 flight from Barcelona to Dus...
+Text 2 (Label 0):
+Paris attacks, Missouri U protests: The uses of propagandaBy Jon Rappoport Lets look at how propagan...

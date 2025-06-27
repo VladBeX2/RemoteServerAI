@@ -1,0 +1,9 @@
+Forma initiala a dataset-ului: (85270, 7)
+Dupa filtrare (word_count >= 30): (81365, 7)
+Dupa adaugarea datelor suplimentare: (81369, 7)
+Loading GloVe embeddings from ../model_training/datasets/GloVe_embeddings/glove.6B.300d.txt...
+Transforming texts into GloVe vectors...
+Saved model: saved_models/LogisticRegression_GloVe_300d.joblib | Accuracy: 0.8600
+Saved model: saved_models/NaiveBayes_GloVe_300d.joblib | Accuracy: 0.6591
+Saved model: saved_models/KNN_GloVe_300d.joblib | Accuracy: 0.8069
+Saved model: saved_models/RandomForest_GloVe_300d.joblib | Accuracy: 0.8695

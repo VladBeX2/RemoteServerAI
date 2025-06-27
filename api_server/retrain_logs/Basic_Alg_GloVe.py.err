@@ -1,0 +1,6 @@
+/home/vlad.cristescu/miniconda3/envs/licenta_api/lib/python3.9/site-packages/joblib/externals/loky/backend/resource_tracker.py:299: UserWarning: resource_tracker: There appear to be 2 leaked file objects to clean up at shutdown
+  warnings.warn(
+/home/vlad.cristescu/miniconda3/envs/licenta_api/lib/python3.9/site-packages/joblib/externals/loky/backend/resource_tracker.py:299: UserWarning: resource_tracker: There appear to be 7 leaked semlock objects to clean up at shutdown
+  warnings.warn(
+/home/vlad.cristescu/miniconda3/envs/licenta_api/lib/python3.9/site-packages/joblib/externals/loky/backend/resource_tracker.py:299: UserWarning: resource_tracker: There appear to be 2 leaked folder objects to clean up at shutdown
+  warnings.warn(

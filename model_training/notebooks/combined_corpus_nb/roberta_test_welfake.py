@@ -1,118 +1,73 @@
-import os
-import re
-import unicodedata
+import torch
+from transformers import RobertaTokenizer, RobertaForSequenceClassification
 import pandas as pd
 import numpy as np
-import torch
-from langdetect import detect
-from transformers import RobertaTokenizer, RobertaForSequenceClassification, Trainer, TrainingArguments
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+import json
+import csv
+import re
+from sklearn.metrics import classification_report
 
-def is_english(text):
-    try:
-        return detect(text) == 'en'
-    except Exception:
-        return False
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 def wordopt(text):
-    if not isinstance(text, str):
-        text = str(text)
-    text = text.lower()
-    
     text = re.sub(r'https?://\S+|www\.\S+', '[URL]', text)
-    
     text = text.replace('\n', ' ')
-    
-    text = unicodedata.normalize('NFKD', text)
     text = text.encode('ascii', 'ignore').decode('ascii')
-    
     text = re.sub(r'\s+', ' ', text).strip()
-    
     return text
 
-df = pd.read_csv("../../datasets/WELFake_Dataset.csv")
-#df = df_all.sample(frac=0.1,random_state=42)
-print("Dimensiunea inițială a setului de date:", df.shape)
+# Load model and tokenizer
+model = RobertaForSequenceClassification.from_pretrained("../TextAttack/roberta_adv_finetuned").to(device)
+tokenizer = RobertaTokenizer.from_pretrained("saved_models/roberta_v3/roberta_v3_tokenizer")
+model.eval()
 
-df.dropna(subset=["text", "label"], inplace=True)
-print("După eliminarea valorilor nule:", df.shape)
-
-mask = df["text"].apply(is_english)
-df = df[mask]
-print("După filtrarea limbii engleze:", df.shape)
-
-df["text"] = df["text"].fillna("").astype(str)
+# Load and preprocess dataset
+df = pd.read_csv("../../datasets/WELFake_cleaned.csv")
 df["text"] = df["text"].apply(wordopt)
-
-
-df["word_count"] = df["text"].apply(lambda x: len(x.split()))
-df = df[df["word_count"] >= 30]
-print("După eliminarea textelor cu <30 cuvinte:", df.shape)
-df['label'] = df['label'].apply(lambda x: 1 - x)
-
 texts = df["text"].tolist()
-labels = df["label"].tolist()
+true_labels = 1 - df["label"].values  # invertim etichetele
+indices = df["Unnamed: 0"].tolist()
 
-model_path = "saved_models/roberta_torch_model"
-tokenizer_path = "saved_models/roberta_tokenizer"
+# Batch processing
+batch_size = 64
+predictions = []
+confidences = []
+wrong_data = []
 
-model = RobertaForSequenceClassification.from_pretrained(model_path)
-#model.to("cpu")
-tokenizer = RobertaTokenizer.from_pretrained(tokenizer_path)
+for i in range(0, len(texts), batch_size):
+    batch_texts = texts[i:i+batch_size]
+    batch_indices = indices[i:i+batch_size]
+    batch_labels = true_labels[i:i+batch_size]
 
-max_length = 512
+    encodings = tokenizer(batch_texts, truncation=True, padding="max_length", max_length=512, return_tensors="pt")
+    input_ids = encodings["input_ids"].to(device)
+    attention_mask = encodings["attention_mask"].to(device)
 
-class RobertaDataset(torch.utils.data.Dataset):
-    def __init__(self, texts, labels, tokenizer, max_length):
-        self.labels = labels
-        self.encodings = tokenizer(
-            texts,
-            truncation=True,
-            padding="max_length",
-            max_length=max_length,
-            return_tensors="pt"
-        )
-    def __len__(self):
-        return len(self.labels)
-    def __getitem__(self, idx):
-        item = {key: val[idx] for key, val in self.encodings.items()}
-        item["labels"] = torch.tensor(self.labels[idx], dtype=torch.long)
-        return item
+    with torch.no_grad():
+        outputs = model(input_ids=input_ids, attention_mask=attention_mask)
+        probs = torch.softmax(outputs.logits, dim=1)
+        preds = torch.argmax(probs, dim=1).cpu().numpy()
+        probs = probs.cpu().numpy()
 
-test_dataset = RobertaDataset(texts, labels, tokenizer, max_length)
+    predictions.extend(preds)
+    confidences.extend(probs)
 
-inference_args = TrainingArguments(
-    output_dir="./roberta_teston_WELFake_results",
-    per_device_eval_batch_size=16,
-    do_predict=True,
-    #no_cuda=True
-)
-trainer = Trainer(
-    model=model,
-    args=inference_args
-)
+    for j, (p, t) in enumerate(zip(preds, batch_labels)):
+        if p != t:
+            wrong_data.append({
+                "Unnamed: 0": batch_indices[j],
+                "confidence": float(probs[j][p])
+            })
 
-predictions_output = trainer.predict(test_dataset)
-logits = predictions_output.predictions
-predicted_labels = np.argmax(logits, axis=-1)
+# Metrics
+report = classification_report(true_labels, predictions, output_dict=True)
 
-acc = accuracy_score(labels, predicted_labels)
-prec = precision_score(labels, predicted_labels, average="weighted", zero_division=0)
-rec = recall_score(labels, predicted_labels, average="weighted", zero_division=0)
-f1 = f1_score(labels, predicted_labels, average="weighted", zero_division=0)
+# Save report
+with open("inference_report_adv.json", "w") as f:
+    json.dump(report, f, indent=4)
 
-
-if trainer.is_world_process_zero():
-    with open("rezultate_roberta_welfake.txt", "w") as f:
-        f.write("=== Rezultate pe noul set de date ===\n")
-        f.write(f"Accuracy:  {acc:.4f}\n")
-        f.write(f"Precision: {prec:.4f}\n")
-        f.write(f"Recall:    {rec:.4f}\n")
-        f.write(f"F1-Score:  {f1:.4f}\n")
-    results_df = pd.DataFrame({
-        "text": texts,
-        "true_label": labels,
-        "predicted_label": predicted_labels
-    })
-    results_df.to_csv("roberta_teston_WELFake_predictions.csv", index=False)
-    print("Am salvat predicțiile în roberta_teston_WELFake_predictions.csv")
+# Save misclassified
+with open("wrong_predictions_adv.csv", "w", newline='') as f:
+    writer = csv.DictWriter(f, fieldnames=["Unnamed: 0", "confidence"])
+    writer.writeheader()
+    writer.writerows(wrong_data)
