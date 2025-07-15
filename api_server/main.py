@@ -62,7 +62,7 @@ def get_glove_index() -> Dict[str, List[float]]:
     global _embeddings_index
     if _embeddings_index is None:
         print("Loading GloVe embeddings into memory…")
-        _embeddings_index = load_glove_embeddings(GLOVE_PATH, EMBEDDING_DIM)
+        _embeddings_index = load_glove_embeddings(GLOVE_PATH)
         print(f"Loaded {_embeddings_index and len(_embeddings_index)} tokens.")
     return _embeddings_index 
 
@@ -164,7 +164,15 @@ def predict(data: InputData):
         prob = None
         if (hasattr(model, "predict_proba")):
             prob = float(model.predict_proba(X_vec)[0][pred])
-
+        elif hasattr(model, "decision_function"):
+            df = model.decision_function(X_vec)
+            if df.ndim == 1:  
+                scores = np.vstack([-df, df]).T
+            else:
+                scores = df
+            exp = np.exp(scores)
+            probs = exp / np.sum(exp, axis=1, keepdims=True)
+            prob = float(probs[0][pred])
         unload_glove_index()
         label = "REAL" if pred == 1 else "FAKE"
         return {
@@ -286,6 +294,7 @@ def explain_with_lime(data: InputData):
         model = joblib.load(model_path)
         def classifier_fn(texts:list[str]) -> np.ndarray:
             cleaned = [wordopt(t) for t in texts]
+            embeddings_index = get_glove_index()
             X = glove_transform(cleaned,embeddings_index,EMBEDDING_DIM)
             if hasattr(model, "predict_proba"):
                 return model.predict_proba(X)
