@@ -9,7 +9,7 @@ from transformers import RobertaTokenizer, RobertaForSequenceClassification
 from lime.lime_text import LimeTextExplainer
 from torch.nn.functional import softmax
 
-# ====================== CONFIG ======================
+ 
 MODEL_PATH = "../../TextAttack/roberta_adv_finetuned"
 TOKENIZER_PATH = "../saved_models/roberta_v3/roberta_v3_tokenizer"
 MISCLASSIFIED_PATH = "roberta_misclassified.csv"
@@ -17,7 +17,7 @@ OUTPUT_PATH = "lime_explanations.csv"
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 MAX_LENGTH = 512
 
-# ====================== FUNCȚII ======================
+ 
 def wordopt(text):
     text = re.sub(r'https?://\S+|www\.\S+', '[URL]', text)
     text = text.replace('\n', ' ')
@@ -40,18 +40,18 @@ def classifier_fn(texts):
         probs = softmax(out.logits, dim=-1)
     return probs.cpu().numpy()
 
-# ====================== ÎNCĂRCARE MODEL ======================
+ 
 tokenizer = RobertaTokenizer.from_pretrained(TOKENIZER_PATH)
 model = RobertaForSequenceClassification.from_pretrained(MODEL_PATH)
 model.to(DEVICE).eval()
 
-# ====================== ÎNCĂRCARE ARTICOLE GREȘITE ======================
+ 
 df = pd.read_csv(MISCLASSIFIED_PATH)
 texts = df["text"].tolist()
 true_labels = df["correct_label"].tolist()
 predicted_labels = df["predicted_label"].tolist()
 
-# ====================== EXPLICAȚII LIME ======================
+ 
 explainer = LimeTextExplainer(class_names=["Fake", "Real"])
 lime_results = []
 
@@ -70,7 +70,7 @@ for i, text in enumerate(tqdm(texts, desc="Procesare articole greșite")):
         "contributions": contributions
     })
 
-# ====================== SALVARE CSV ======================
+ 
 lime_df = pd.DataFrame(lime_results)
 lime_df.to_csv(OUTPUT_PATH, index=False)
 print(f"Rezultatele LIME au fost salvate în '{OUTPUT_PATH}'")

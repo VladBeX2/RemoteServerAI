@@ -22,8 +22,8 @@ def wordopt(text):
     text = re.sub(r"<.*?>+", '', text)
     text = re.sub(r'[%s]' % re.escape(string.punctuation), '', text)
     text = re.sub(r'\n', '', text)
-    text = re.sub(r'\w*\d\w*', '', text)  # eliminare cuvinte cu cifre
-    text = re.sub(r'\s+', ' ', text).strip()  # eliminare spații multiple
+    text = re.sub(r'\w*\d\w*', '', text)   
+    text = re.sub(r'\s+', ' ', text).strip()   
     text = re.sub(r'[“”‘’]', '', text)
     tokens = text.split()
     lemmatizer = WordNetLemmatizer()
@@ -45,7 +45,7 @@ X_train_texts, X_test_texts, y_train, y_test = train_test_split(
     texts, labels, test_size=0.2, random_state=42, stratify=labels
 )
 
-# 2. Tokenizare și padding
+ 
 max_num_words = 20000
 tokenizer = Tokenizer(num_words=max_num_words)
 tokenizer.fit_on_texts(X_train_texts)

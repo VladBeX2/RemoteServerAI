@@ -6,12 +6,11 @@ from torch.utils.data import Dataset
 from sklearn.metrics import accuracy_score, f1_score
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 
-# =====================================
-# Configurații și căi
-# =====================================
-ADV_MODEL_DIR       = "roberta_adv_finetuned"  # directorul modelului adversarial-trained
+ 
+ 
+ADV_MODEL_DIR       = "roberta_adv_finetuned"   
 TOKENIZER_PATH      = "../combined_corpus_nb/saved_models/roberta_v3/roberta_v3_tokenizer"
-TRAIN_SPLIT_SCRIPT  = "split_dataset.py"   # asigură-te că e modulabil import-ul
+TRAIN_SPLIT_SCRIPT  = "split_dataset.py"    
 DATA_PATH           = "../../datasets/Combined_Corpus/All_cleaned.csv"
 TEST_AUG_PATH       = "test_augmented.csv"
 
@@ -24,9 +23,9 @@ RANDOM_STATE        = 42
 MAX_LENGTH          = 512
 BATCH_SIZE          = 32
 
-# =====================================
-# Definește dataset-ul PyTorch
-# =====================================
+ 
+ 
+ 
 class TextDataset(Dataset):
     def __init__(self, texts, labels, tokenizer, max_length=512):
         self.texts = texts
@@ -51,9 +50,9 @@ class TextDataset(Dataset):
         item["labels"] = torch.tensor(label, dtype=torch.long)
         return item
 
-# =====================================
-# Funcție de evaluare
-# =====================================
+ 
+ 
+ 
 def evaluate_dataset(model, tokenizer, texts, labels):
     model.eval()
     preds = []
@@ -75,18 +74,18 @@ def evaluate_dataset(model, tokenizer, texts, labels):
     f1 = f1_score(labels, preds)
     return acc, f1
 
-# =====================================
-# Încarcă tokenizer și model adv
-# =====================================
+ 
+ 
+ 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 tokenizer = AutoTokenizer.from_pretrained(TOKENIZER_PATH)
 adv_model = AutoModelForSequenceClassification.from_pretrained(
     ADV_MODEL_DIR
 ).to(device)
 
-# =====================================
-# 1) Test pe test_augmented.csv
-# =====================================
+ 
+ 
+ 
 df_aug = pd.read_csv(TEST_AUG_PATH)
 texts_aug = df_aug[TEXT_COL].tolist()
 labels_aug = df_aug[LABEL_COL].tolist()
@@ -94,9 +93,9 @@ labels_aug = df_aug[LABEL_COL].tolist()
 acc_aug, f1_aug = evaluate_dataset(adv_model, tokenizer, texts_aug, labels_aug)
 print(f"Adversarial-trained model on test_augmented.csv -> Accuracy: {acc_aug:.3%}, F1: {f1_aug:.3%}")
 
-# =====================================
-# 2) Test pe clean test_df (split_dataset)
-# =====================================
+ 
+ 
+ 
 import sys
 sys.path.insert(0, os.path.abspath(os.path.dirname(TRAIN_SPLIT_SCRIPT)))
 from split_dataset import load_and_split

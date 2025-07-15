@@ -20,8 +20,6 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Embedding, LSTM, Dense, Conv1D, GlobalMaxPooling1D, MaxPooling1D
 from tensorflow.keras.callbacks import EarlyStopping, Callback
 
-# ─── CONFIG ───────────────────────────────────────────────────────────────────
-
 DATA_PATH       = "../../datasets/Combined_Corpus/All_cleaned.csv"
 SAVE_ROOT       = "saved_models/fasttext_supervised"
 FT_SUP_MODEL    = "fasttext_supervised_model.bin"
@@ -37,8 +35,6 @@ TEST_RATIO      = 0.15
 os.makedirs(SAVE_ROOT, exist_ok=True)
 np.random.seed(RND_SEED)
 tf.random.set_seed(RND_SEED)
-
-# ─── STEP 1: LOAD & CLEAN ───────────────────────────────────────────────────────
 
 df = pd.read_csv(DATA_PATH)
 df = df.dropna(subset=["text"])
@@ -65,12 +61,9 @@ df["clean"] = df["text"].astype(str).map(clean_text)
 y = df["label"].astype(int).values
 texts = df["clean"].tolist()
 
-# ─── STEP 2: LOAD SUPERVISED FASTTEXT FOR EMBEDDINGS ───────────────────────────
-
 print("Loading supervised FastText model…")
 ft_sup = fasttext.load_model(FT_SUP_MODEL)
 
-# ─── STEP 3: TOKENIZE & BUILD EMBEDDING MATRIX ────────────────────────────────
 EMBEDDING_DIM = ft_sup.get_dimension()
 print("FastText embedding dim =", EMBEDDING_DIM)
 
@@ -88,21 +81,15 @@ for w, i in word_index.items():
         continue
     emb_matrix[i] = ft_sup.get_word_vector(w)
 
-# ─── STEP 4: SPLIT 70/15/15 ────────────────────────────────────────────────────
-
-# First split off test
 test_size = TEST_RATIO
 X_tmp, X_test, y_tmp, y_test = train_test_split(
     X, y, test_size=test_size, random_state=RND_SEED, stratify=y)
 
-# Then split the remainder into train (70/85=0.8235) and val (0.15/0.85=0.1765)
 val_size = VAL_RATIO / (1 - TEST_RATIO)
 X_train, X_val, y_train, y_val = train_test_split(
     X_tmp, y_tmp, test_size=val_size, random_state=RND_SEED, stratify=y_tmp)
 
 print(f"Splits → train: {len(X_train)}, val: {len(X_val)}, test: {len(X_test)}")
-
-# ─── CALLBACK TO EVALUATE TEST EACH EPOCH ───────────────────────────────────────
 
 class TestEvalCallback(Callback):
     def __init__(self, test_data):
@@ -115,8 +102,6 @@ class TestEvalCallback(Callback):
         loss, acc = self.model.evaluate(self.test_x, self.test_y, verbose=0)
         self.test_losses.append(loss)
         self.test_accs.append(acc)
-
-# ─── MODEL FACTORIES ────────────────────────────────────────────────────────────
 
 def build_lstm():
     m = Sequential([
@@ -151,8 +136,6 @@ def build_cnn_lstm():
     m.compile(loss="binary_crossentropy", optimizer="adam", metrics=["accuracy"])
     return m
 
-# ─── TRAIN & SAVE EACH MODEL ────────────────────────────────────────────────────
-
 for name, factory in [("LSTM", build_lstm),
                       ("CNN", build_cnn),
                       ("CNN_LSTM", build_cnn_lstm)]:
@@ -177,11 +160,9 @@ for name, factory in [("LSTM", build_lstm),
     model.save(model_path)
     print(f"Model saved to {model_path}")
 
-    # plot curves
     epochs_ran = len(history.history["loss"])
     plt.figure(figsize=(10,4))
 
-    # loss
     plt.subplot(1,2,1)
     plt.plot(range(1, epochs_ran+1), history.history["loss"],   label="train")
     plt.plot(range(1, epochs_ran+1), history.history["val_loss"],label="val")
@@ -189,7 +170,6 @@ for name, factory in [("LSTM", build_lstm),
     plt.title(f"{name} Loss")
     plt.xlabel("Epoch"); plt.ylabel("Loss"); plt.legend()
 
-    # accuracy
     plt.subplot(1,2,2)
     plt.plot(range(1, epochs_ran+1), history.history["accuracy"],      label="train")
     plt.plot(range(1, epochs_ran+1), history.history["val_accuracy"],  label="val")
@@ -203,4 +183,4 @@ for name, factory in [("LSTM", build_lstm),
     plt.close()
     print(f"Learning curves saved to {curve_path}")
 
-print("\n✅ Done training all models.")
+print("\nDone training all models.")

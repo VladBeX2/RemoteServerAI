@@ -61,16 +61,16 @@ _embeddings_index: Optional[Dict[str, List[float]]] = None
 def get_glove_index() -> Dict[str, List[float]]:
     global _embeddings_index
     if _embeddings_index is None:
-        print("🕐 Loading GloVe embeddings into memory…")
+        print("Loading GloVe embeddings into memory…")
         _embeddings_index = load_glove_embeddings(GLOVE_PATH, EMBEDDING_DIM)
-        print(f"✅ Loaded {_embeddings_index and len(_embeddings_index)} tokens.")
-    return _embeddings_index  # type: ignore
+        print(f"Loaded {_embeddings_index and len(_embeddings_index)} tokens.")
+    return _embeddings_index 
 
 def unload_glove_index() -> None:
     global _embeddings_index
     _embeddings_index = None
     gc.collect()
-    print("🗑 Freed GloVe embeddings from memory.")
+    print("Freed GloVe embeddings from memory.")
 
 
 def _run_queue():
@@ -96,7 +96,7 @@ def _run_queue():
         ret = _current_proc.wait()
         if ret != 0:
             _error_flag = True
-            print(f"❌ Error in script {script}")
+            print(f"Error in script {script}")
 
             break
 
@@ -304,7 +304,6 @@ def explain_with_lime(data: InputData):
         num_samples=500
     )
 
-    # Generăm HTML și îl stilizăm
     html_data = explanation.as_html()
     html_data = html_data.replace(
         "<body>",

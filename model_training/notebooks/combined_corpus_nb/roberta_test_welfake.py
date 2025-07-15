@@ -16,19 +16,19 @@ def wordopt(text):
     text = re.sub(r'\s+', ' ', text).strip()
     return text
 
-# Load model and tokenizer
+ 
 model = RobertaForSequenceClassification.from_pretrained("../TextAttack/roberta_adv_finetuned").to(device)
 tokenizer = RobertaTokenizer.from_pretrained("saved_models/roberta_v3/roberta_v3_tokenizer")
 model.eval()
 
-# Load and preprocess dataset
+ 
 df = pd.read_csv("../../datasets/WELFake_cleaned.csv")
 df["text"] = df["text"].apply(wordopt)
 texts = df["text"].tolist()
-true_labels = 1 - df["label"].values  # invertim etichetele
+true_labels = 1 - df["label"].values   
 indices = df["Unnamed: 0"].tolist()
 
-# Batch processing
+ 
 batch_size = 64
 predictions = []
 confidences = []
@@ -59,14 +59,14 @@ for i in range(0, len(texts), batch_size):
                 "confidence": float(probs[j][p])
             })
 
-# Metrics
+ 
 report = classification_report(true_labels, predictions, output_dict=True)
 
-# Save report
+ 
 with open("inference_report_adv.json", "w") as f:
     json.dump(report, f, indent=4)
 
-# Save misclassified
+ 
 with open("wrong_predictions_adv.csv", "w", newline='') as f:
     writer = csv.DictWriter(f, fieldnames=["Unnamed: 0", "confidence"])
     writer.writeheader()

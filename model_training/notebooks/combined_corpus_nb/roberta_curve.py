@@ -22,7 +22,7 @@ def wordopt(text):
     text = re.sub(r'\s+', ' ', text).strip()
     return text
 
-# Citirea și preprocesarea datasetului
+ 
 df = pd.read_csv("../../datasets/Combined_Corpus/All.csv")
 print("Dimensiunea inițială a setului de date:", df.shape)
 
@@ -46,20 +46,20 @@ eliminated_word_count = before_word_count_filter - len(df)
 print(f"Eliminate {eliminated_word_count} înregistrări deoarece aveau mai puțin de 30 de cuvinte. Noua dimensiune: {df.shape}")
 df.drop(columns=["word_count"], inplace=True)
 
-# Crearea listelor cu texte și etichete
+ 
 texts = df["Statement"].tolist()
 labels = df["Label"].tolist()
 
-# Împărțirea în seturi de antrenament și testare
+ 
 train_texts, test_texts, train_labels, test_labels = train_test_split(
     texts, labels, test_size=0.2, random_state=42
 )
 
-# Inițializarea tokenizerului
+ 
 tokenizer = RobertaTokenizer.from_pretrained("roberta-base")
 max_length = 512 
 
-# Funcția de tokenizare a textelor, creând un obiect de tip Dataset
+ 
 def tokenize_texts(texts, labels, tokenizer, max_length):
     encodings = tokenizer(
         texts,
@@ -85,7 +85,7 @@ print("Tokenizare...")
 train_dataset = tokenize_texts(train_texts, train_labels, tokenizer, max_length)
 test_dataset  = tokenize_texts(test_texts, test_labels, tokenizer, max_length)
 
-# Definirea funcției de calcul a metricilor
+ 
 def compute_metrics(eval_pred):
     logits, labels = eval_pred
     preds = torch.argmax(torch.tensor(logits), axis=-1).numpy()
@@ -95,8 +95,8 @@ def compute_metrics(eval_pred):
     f1 = f1_score(labels, preds, average="weighted", zero_division=0)
     return {"accuracy": acc, "precision": prec, "recall": rec, "f1": f1}
 
-# EXPERIMENT: CURBA DE ÎNVĂȚARE
-# Vom antrena modelul pe fracții din setul de antrenament și vom înregistra loss-ul de antrenare și evaluare
+ 
+ 
 
 fractions = [0.1, 0.25, 0.5, 0.75, 1.0]
 subset_sizes = []
@@ -109,24 +109,24 @@ for frac in fractions:
     train_subset = Subset(train_dataset, subset_indices)
     subset_sizes.append(subset_size)
     
-    # Setările de antrenare pentru experiment
+     
     training_args_subset = TrainingArguments(
         output_dir=f"./results_subset_{int(frac*100)}",
-        num_train_epochs=3,                    # Folosim 3 epoci pentru rapiditate
+        num_train_epochs=3,                     
         per_device_train_batch_size=16,
         gradient_accumulation_steps=2,       
         per_device_eval_batch_size=16,
         evaluation_strategy="epoch",
-        save_strategy="no",                    # Nu salvăm modele în timpul experimentului
+        save_strategy="no",                     
         logging_dir=f"./logs_subset_{int(frac*100)}",
         logging_steps=50,
         learning_rate=1e-5,
         warmup_steps=500,
-        disable_tqdm=True,                     # Pentru output mai curat
-        no_cuda=False                          # Setează True dacă dorești să rulezi pe CPU
+        disable_tqdm=True,                      
+        no_cuda=False                           
     )
     
-    # Reinițializăm modelul de la greutățile pre-antrenate
+     
     model_subset = RobertaForSequenceClassification.from_pretrained("roberta-base", num_labels=2)
     
     trainer_subset = Trainer(
@@ -148,7 +148,7 @@ for frac in fractions:
     
     print(f"Subset size: {subset_size} | Training Loss: {training_loss:.4f} | Eval Loss: {evaluation_loss:.4f}")
 
-# Plotăm curba de învățare
+ 
 if trainer_subset.is_world_process_zero():
     plt.figure(figsize=(8, 6))
     plt.plot(subset_sizes, train_losses, label="Training Loss", marker="o")

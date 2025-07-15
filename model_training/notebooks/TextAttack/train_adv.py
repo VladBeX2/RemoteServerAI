@@ -11,9 +11,9 @@ from transformers import (
     TrainingArguments,
 )
 
-# =====================================
-# Configurații și căi
-# =====================================
+ 
+ 
+ 
 BASELINE_MODEL_PATH = "../combined_corpus_nb/saved_models/roberta_v3/roberta_v3_torch_model"
 TOKENIZER_PATH      = "../combined_corpus_nb/saved_models/roberta_v3/roberta_v3_tokenizer"
 TRAIN_AUG_PATH      = "train_augmented.csv"
@@ -22,28 +22,28 @@ OUTPUT_DIR          = "roberta_adv_finetuned_2"
 RANDOM_STATE        = 42
 MAX_LENGTH          = 512
 
-# =====================================
-# 1) Încarcă și sparge datele augmentate
-# =====================================
+ 
+ 
+ 
 train_df = pd.read_csv(TRAIN_AUG_PATH)
 val_df   = pd.read_csv(VAL_AUG_PATH)
 
-# (Opțional) Shuffle pentru consistență
+ 
 train_df = train_df.sample(frac=1, random_state=RANDOM_STATE).reset_index(drop=True)
 val_df   = val_df.sample(frac=1, random_state=RANDOM_STATE).reset_index(drop=True)
 
-# =====================================
-# 2) Încarcă tokenizer și model baseline
-# =====================================
+ 
+ 
+ 
 tokenizer = AutoTokenizer.from_pretrained(TOKENIZER_PATH)
 model = AutoModelForSequenceClassification.from_pretrained(
     BASELINE_MODEL_PATH,
     num_labels=2
 )
 
-# =====================================
-# 3) Definește Dataset PyTorch
-# =====================================
+ 
+ 
+ 
 class AdvDataset(Dataset):
     def __init__(self, dataframe, tokenizer, max_length=512):
         self.texts = dataframe["text"].tolist()
@@ -71,9 +71,9 @@ class AdvDataset(Dataset):
 train_dataset = AdvDataset(train_df, tokenizer, MAX_LENGTH)
 val_dataset   = AdvDataset(val_df, tokenizer, MAX_LENGTH)
 
-# =====================================
-# 4) Configurează Trainer
-# =====================================
+ 
+ 
+ 
 training_args = TrainingArguments(
     output_dir=OUTPUT_DIR,
     num_train_epochs=3,
@@ -105,13 +105,13 @@ trainer = Trainer(
     compute_metrics=compute_metrics,
 )
 
-# =====================================
-# 5) Lansează fine-tuning-ul adversarial
-# =====================================
+ 
+ 
+ 
 trainer.train()
 
-# =====================================
-# 6) Salvează modelul adversarial-trained
-# =====================================
+ 
+ 
+ 
 trainer.save_model(OUTPUT_DIR)
 print(f"Adversarial fine-tuning complet. Model salvat în {OUTPUT_DIR}")

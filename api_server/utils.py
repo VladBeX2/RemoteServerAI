@@ -11,8 +11,8 @@ def wordopt(text):
     text = re.sub(r"<.*?>+", '', text)
     text = re.sub(r'[%s]' % re.escape(string.punctuation), '', text)
     text = re.sub(r'\n', '', text)
-    text = re.sub(r'\w*\d\w*', '', text)  # eliminare cuvinte cu cifre
-    text = re.sub(r'\s+', ' ', text).strip()  # eliminare spații multiple
+    text = re.sub(r'\w*\d\w*', '', text)
+    text = re.sub(r'\s+', ' ', text).strip()
     text = re.sub(r'[“”‘’]', '', text)
     tokens = text.split()
     lemmatizer = WordNetLemmatizer()
@@ -39,11 +39,7 @@ def load_glove_embeddings(glove_path):
     return embeddings_index
 
 def glove_transform(texts, embeddings_index, embedding_dim=300):
-    """
-    Transforma fiecare text într-un vector GloVe de dimensiune embedding_dim
-    prin medierea embedding-urilor cuvintelor (care exista în embeddings_index).
-    Returneaza un array de dimensiune [num_samples, embedding_dim].
-    """
+    
     X_vectors = []
     for text in texts:
         tokens = text.split()
@@ -52,9 +48,7 @@ def glove_transform(texts, embeddings_index, embedding_dim=300):
             if token in embeddings_index:
                 valid_vectors.append(embeddings_index[token])
         if len(valid_vectors) == 0:
-            # fallback: vector de zero daca niciun cuvant nu e in vocabular
             X_vectors.append(np.zeros(embedding_dim, dtype='float32'))
         else:
-            # media embedding-urilor
             X_vectors.append(np.mean(valid_vectors, axis=0))
     return np.array(X_vectors, dtype='float32')

@@ -5,7 +5,7 @@ import torch.multiprocessing as mp
 import nltk
 import re
 
-# Adaugă directorul părinte pentru importuri locale
+ 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
@@ -15,13 +15,13 @@ from textattack.attack_recipes import PWWSRen2019
 from textattack.models.wrappers import HuggingFaceModelWrapper
 from textattack.datasets import Dataset
 
-# Funcții de split și sampling
+ 
 from split_dataset import load_and_split
 from sample_dataset import sample_for_attacks
 
-# ================================
-# Configurații generale
-# ================================
+ 
+ 
+ 
 MODEL_PATH     = "../../combined_corpus_nb/saved_models/roberta_v3/roberta_v3_torch_model"
 TOKENIZER_PATH = "../../combined_corpus_nb/saved_models/roberta_v3/roberta_v3_tokenizer"
 DATA_PATH      = "../../../datasets/Combined_Corpus/All_cleaned.csv"
@@ -33,27 +33,27 @@ MAX_WORDS      = 500
 NUM_PER_ATTACK = 800
 RANDOM_STATE   = 42
 
-# ================================
-# Worker pentru PWWS
-# ================================
+ 
+ 
+ 
 
 def worker(rank: int, world_size: int, samples_chunks):
-    # Izolează GPU-ul pentru acest proces
+     
     os.environ["CUDA_VISIBLE_DEVICES"] = str(rank)
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-    # Download NLTK models pentru PoS tagging
+     
     nltk.download("averaged_perceptron_tagger_eng", quiet=True)
 
-    # Încarcă model și tokenizer
+     
     model = AutoModelForSequenceClassification.from_pretrained(MODEL_PATH).to(device)
     tokenizer = AutoTokenizer.from_pretrained(TOKENIZER_PATH)
     wrapper = HuggingFaceModelWrapper(model, tokenizer)
 
-    # Construiește atacul PWWS
+     
     attack = PWWSRen2019.build(wrapper)
 
-    # Setează AttackArgs
+     
     attack_args = AttackArgs(
         num_examples=len(samples_chunks[rank]),
         log_to_csv=f"test_pwws_results_gpu_{rank}.csv",
@@ -62,16 +62,16 @@ def worker(rank: int, world_size: int, samples_chunks):
         checkpoint_dir=f"test_pwws_chkpts_gpu_{rank}"
     )
 
-    # Rulează atacul
+     
     attacker = Attacker(attack, Dataset(samples_chunks[rank]), attack_args)
     attacker.attack_dataset()
 
-# ================================
-# Script principal
-# ================================
+ 
+ 
+ 
 
 if __name__ == "__main__":
-    # 1) Split reproducibil al datasetului
+     
     train_df, val_df, test_df = load_and_split(
         csv_path=DATA_PATH,
         text_col=TEXT_COL,
@@ -83,7 +83,7 @@ if __name__ == "__main__":
         random_state=RANDOM_STATE
     )
 
-    # 2) Eșantionare disjunctă pentru PWWS
+     
     attack_samples = sample_for_attacks(
         test_df,
         text_col=TEXT_COL,
@@ -96,12 +96,12 @@ if __name__ == "__main__":
     )
     pwws_samples = attack_samples['pwws']
 
-    # 3) Configurare multiprocessing și împărțire pe GPU-uri
+     
     ngpu = min(3, torch.cuda.device_count())
     if ngpu == 0:
         raise RuntimeError("Nu am găsit GPU-uri pentru atac!")
 
-    # Împarte pwws_samples în chunk-uri egale
+     
     chunk_size = len(pwws_samples) // ngpu
     chunks = [
         pwws_samples[i*chunk_size:(i+1)*chunk_size]
@@ -110,7 +110,7 @@ if __name__ == "__main__":
     if len(pwws_samples) % ngpu:
         chunks[-1] += pwws_samples[ngpu*chunk_size:]
 
-    # 4) Rulează atacurile în paralel
+     
     mp.spawn(
         fn=worker,
         args=(ngpu, chunks),

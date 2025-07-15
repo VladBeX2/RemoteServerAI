@@ -19,7 +19,7 @@ from keras.callbacks import EarlyStopping
 from sklearn.metrics import classification_report
 import pickle
 
-# Setări pentru reproducibilitate
+ 
 np.random.seed(42)
 tf.random.set_seed(42)
 
@@ -30,8 +30,8 @@ def wordopt(text):
     text = re.sub(r"<.*?>+", '', text)
     text = re.sub(r'[%s]' % re.escape(string.punctuation), '', text)
     text = re.sub(r'\n', '', text)
-    text = re.sub(r'\w*\d\w*', '', text)  # eliminare cuvinte cu cifre
-    text = re.sub(r'\s+', ' ', text).strip()  # eliminare spații multiple
+    text = re.sub(r'\w*\d\w*', '', text)   
+    text = re.sub(r'\s+', ' ', text).strip()   
     text = re.sub(r'[“”‘’]', '', text)
     tokens = text.split()
     lemmatizer = WordNetLemmatizer()
@@ -94,7 +94,7 @@ def create_cnn_lstm_model(max_sequence_length, num_words, embedding_dim, embeddi
     return model
 
 def main():
-    # 1. Încarcă dataset-ul
+     
     data = pd.read_csv("../../datasets/Combined_Corpus/All.csv")
     print("Forma dataset-ului inițial:", data.shape)
     data = data[data['word_count'] >= 30]
@@ -109,7 +109,7 @@ def main():
         texts, labels, test_size=0.2, random_state=42, stratify=labels
     )
 
-    # 2. Tokenizare și padding
+     
     max_num_words = 20000
     tokenizer = Tokenizer(num_words=max_num_words)
     tokenizer.fit_on_texts(X_train_texts)
@@ -124,19 +124,19 @@ def main():
     X_train_pad = pad_sequences(X_train_seq, maxlen=max_sequence_length)
     X_test_pad = pad_sequences(X_test_seq, maxlen=max_sequence_length)
 
-    # 3. Încarcă embedding-urile GloVe (300d)
-    glove_path = "../../datasets/GloVe_embeddings/glove.6B.300d.txt"  # asigură-te că este calea corectă
+     
+    glove_path = "../../datasets/GloVe_embeddings/glove.6B.300d.txt"   
     embedding_dim = 300
     print("Se încarcă GloVe embeddings...")
     embeddings_index = load_glove_embeddings(glove_path, embedding_dim)
     print("Numărul de token-uri GloVe:", len(embeddings_index))
 
-    # 4. Creează matricea de embedding-uri
+     
     word_index = tokenizer.word_index
     num_words = min(max_num_words, len(word_index) + 1)
     embedding_matrix = create_embedding_matrix(word_index, embeddings_index, embedding_dim, max_num_words)
 
-    # 5. Definește strategia de distribuție pe GPU-uri
+     
     strategy = tf.distribute.MirroredStrategy()
     print("Numărul de GPU-uri folosite:", strategy.num_replicas_in_sync)
 
@@ -144,7 +144,7 @@ def main():
     save_dir = "../saved_models"
     os.makedirs(save_dir, exist_ok=True)
 
-    # 6. Antrenăm fiecare model în cadrul strategiei (LSTM, CNN, CNN-LSTM)
+     
     for model_name in ["LSTM", "CNN", "CNN_LSTM"]:
         with strategy.scope():
             if model_name == "LSTM":

@@ -21,7 +21,6 @@ def wordopt(text):
     text = re.sub(r'\s+', ' ', text).strip()
     return text
 
-# Citirea și preprocesarea datasetului
 df = pd.read_csv("../../datasets/Combined_Corpus/All.csv")
 print("Dimensiunea inițială a setului de date:", df.shape)
 

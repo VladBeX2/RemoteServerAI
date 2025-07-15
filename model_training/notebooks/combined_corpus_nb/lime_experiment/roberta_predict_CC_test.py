@@ -7,15 +7,15 @@ from torch.nn.functional import softmax
 from tqdm import tqdm
 import re
 
-# ======================= CONFIG ============================
+ 
 MODEL_PATH = "../../TextAttack/roberta_adv_finetuned"
 TOKENIZER_PATH = "../saved_models/roberta_v3/roberta_v3_tokenizer"
-DATA_PATH = "../../../datasets/Combined_Corpus/All_cleaned.csv"  # <- modifică
+DATA_PATH = "../../../datasets/Combined_Corpus/All_cleaned.csv"   
 OUTPUT_CSV = "roberta_misclassified.csv"
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 MAX_LENGTH = 512
 
-# ======================= FUNCȚII ============================
+ 
 def wordopt(text):
     text = re.sub(r'https?://\S+|www\.\S+', '[URL]', text)
     text = text.replace('\n', ' ')
@@ -30,22 +30,22 @@ def preprocess_df(df):
     df["text"] = df["text"].apply(wordopt)
     return df.drop(columns=["word_count"])
 
-# ======================= ÎNCĂRCARE ============================
+ 
 df = pd.read_csv(DATA_PATH)
 df = preprocess_df(df)
 
 train_val, test = train_test_split(df, test_size=0.15, random_state=42, stratify=df["label"])
-train, val = train_test_split(train_val, test_size=0.1765, random_state=42, stratify=train_val["label"])  # 0.1765 * 0.85 ≈ 0.15
+train, val = train_test_split(train_val, test_size=0.1765, random_state=42, stratify=train_val["label"])   
 
 print(f"Train: {len(train)}, Val: {len(val)}, Test: {len(test)}")
 
-# ======================= TOKENIZER + MODEL ============================
+ 
 tokenizer = RobertaTokenizer.from_pretrained(TOKENIZER_PATH)
 model = RobertaForSequenceClassification.from_pretrained(MODEL_PATH)
 model.to(DEVICE)
 model.eval()
 
-# ======================= INFERENȚĂ ============================
+ 
 wrong_preds = []
 
 for idx, row in tqdm(test.iterrows(), total=len(test)):
@@ -75,7 +75,7 @@ for idx, row in tqdm(test.iterrows(), total=len(test)):
             "confidence": round(conf, 4)
         })
 
-# ======================= SALVARE ============================
+ 
 out_df = pd.DataFrame(wrong_preds)
 out_df.to_csv(OUTPUT_CSV, index=False)
 print(f"Salvat {len(out_df)} articole greșit clasificate în {OUTPUT_CSV}")

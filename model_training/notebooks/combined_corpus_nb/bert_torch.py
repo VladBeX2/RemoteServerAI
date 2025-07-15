@@ -42,7 +42,6 @@ tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
 max_length = 512
 print("definitie Tokenizare...")
 def tokenize_texts(texts, labels, tokenizer, max_length):
-    """Tokenizează o listă de texte și întoarce un Dataset PyTorch."""
     encodings = tokenizer(
         texts,
         truncation=True,
@@ -90,21 +89,21 @@ def compute_metrics(eval_pred):
 
 print("definitie Trainer_args ...")
 training_args = TrainingArguments(
-    output_dir="./results",            # Directorul unde se salvează checkpoint-urile
-    num_train_epochs=10,               # Mărim numărul de epoci pentru a oferi modelului mai mult timp de antrenare
-    per_device_train_batch_size=16,    # Batch size pe GPU; dacă memoria permite, se poate mări
-    gradient_accumulation_steps=2,       # Efectiv, batch size-ul total devine 16*2=32 pe GPU
-    per_device_eval_batch_size=16,     # Batch size pentru evaluare
-    evaluation_strategy="epoch",       # Evaluează la finalul fiecărei epoci; poți încerca și "steps" dacă datasetul este mare
-    save_strategy="epoch",             # Salvează modelul la finalul fiecărei epoci
-    logging_dir="./logs",              # Directorul pentru loguri
-    logging_steps=50,                  # Log la fiecare 50 de pași
-    learning_rate=1e-5,                # Rata de învățare; poți experimenta și cu valori mai mici
-    warmup_steps=1000,                 # Mai mulți pași de încălzire pentru a stabiliza rata de învățare inițială
-    weight_decay=0.01,                 # Un mic weight decay poate ajuta la regularizare
-    load_best_model_at_end=True,       # Încarcă cel mai bun model pe setul de validare la final
-    fp16=True,                         # Dacă GPU-ul suportă, folosește precizie mixtă pentru antrenare mai rapidă
-    save_total_limit=3                 # Limitează numărul de checkpoint-uri salvate pentru a economisi spațiu
+    output_dir="./results",
+    num_train_epochs=10,
+    per_device_train_batch_size=16,
+    gradient_accumulation_steps=2,
+    per_device_eval_batch_size=16,
+    evaluation_strategy="epoch",
+    save_strategy="epoch",
+    logging_dir="./logs",
+    logging_steps=50,
+    learning_rate=1e-5,
+    warmup_steps=1000,
+    weight_decay=0.01,
+    load_best_model_at_end=True,
+    fp16=True,
+    save_total_limit=3
 )
 
 
