@@ -3,6 +3,11 @@ from pydantic import BaseModel
 from transformers import BertForSequenceClassification, BertTokenizer,RobertaTokenizer, RobertaForSequenceClassification
 from lime.lime_text import LimeTextExplainer
 from fastapi.responses import JSONResponse
+import tensorflow as tf
+import pickle
+from tensorflow.keras.models import load_model
+from tensorflow.keras.preprocessing.sequence import pad_sequences
+from tensorflow.keras.preprocessing.text import tokenizer_from_json
 import matplotlib.pyplot as plt
 import base64
 from io import BytesIO
@@ -109,6 +114,7 @@ class InputData(BaseModel):
 
 @app.post("/predict")
 def predict(data: InputData):
+    print(data.model_name)
     if data.model_name == "BERT":
         text = wordopt_lite(data.text)
         toks = bert_tok(
@@ -150,7 +156,31 @@ def predict(data: InputData):
         label = "REAL" if pred == 1 else "FAKE"
 
         return {"label": label, "probability": prob}
+    elif data.model_name in ["CNN", "LSTM", "CNN-LSTM"]:
+        model_dir = os.path.join(MODELS_DIR, "cnn_lstm_glove2")
+        tokenizer_path = os.path.join(model_dir, "tokenizer.json")
+        model_path = os.path.join(model_dir, f"{data.model_name}_GloVe.h5")
 
+        if not os.path.exists(tokenizer_path):
+            raise HTTPException(status_code=404, detail="Tokenizer not found.")
+        if not os.path.exists(model_path):
+            raise HTTPException(status_code=404, detail="Model not found.")
+
+        with open(tokenizer_path, "r") as f:
+            tokenizer = tokenizer_from_json(f.read())
+
+        cleaned_text = wordopt(data.text)
+        sequence = tokenizer.texts_to_sequences([cleaned_text])
+        padded = pad_sequences(sequence, maxlen=100)
+
+        model = load_model(model_path)
+
+        prob = float(model.predict(padded)[0][0])
+        label = "REAL" if prob > 0.5 else "FAKE"
+        return {
+            "label": label,
+            "probability": prob
+        }
     else:
         text = wordopt(data.text)
         fname = f"{data.model_name}_GloVe_300d.joblib"
@@ -287,6 +317,25 @@ def explain_with_lime(data: InputData):
                 out = roberta_model(**toks)
                 probs = torch.softmax(out.logits, dim=-1)
             return probs.cpu().numpy()
+    elif data.model_name in ["CNN", "LSTM", "CNN-LSTM"]:
+        model_dir = os.path.join(MODELS_DIR, "cnn_lstm_glove2")
+        tokenizer_path = os.path.join(model_dir, "tokenizer.json")
+        model_path = os.path.join(model_dir, f"{data.model_name}_GloVe.h5")
+
+        if not os.path.exists(tokenizer_path) or not os.path.exists(model_path):
+            raise HTTPException(status_code=404, detail="Model or tokenizer not found.")
+        
+        with open(tokenizer_path, "r") as f:
+            tokenizer = tokenizer_from_json(f.read())
+        
+        model = load_model(model_path)
+
+        def classifier_fn(texts:list[str]) -> np.ndarray:
+            cleaned = [wordopt(t) for t in texts]
+            sequences = tokenizer.texts_to_sequences(cleaned)
+            padded = pad_sequences(sequences, maxlen=100)
+            preds = model.predict(padded)
+            return np.hstack([1 - preds, preds])
     else:
         cleaned= wordopt(data.text)
         fname = f"{data.model_name}_GloVe_300d.joblib"

@@ -11,6 +11,7 @@ from nltk.stem import WordNetLemmatizer
 import tensorflow as tf
 from tensorflow.keras.preprocessing.text import Tokenizer
 from sklearn.model_selection import train_test_split
+from tensorflow.keras.preprocessing.text import tokenizer_from_json
 
 np.random.seed(42)
 tf.random.set_seed(42)
@@ -50,5 +51,8 @@ max_num_words = 20000
 tokenizer = Tokenizer(num_words=max_num_words)
 tokenizer.fit_on_texts(X_train_texts)
 
-with open("saved_models/cnn_lstm_glove/tokenizer.pkl", "wb") as handle:
-    pickle.dump(tokenizer, handle)
+tokenizer_json = tokenizer.to_json()
+
+with open("saved_models/cnn_lstm_glove2/tokenizer.json", "w") as f:
+    print("Salvare tokenizer...")
+    f.write(tokenizer_json)

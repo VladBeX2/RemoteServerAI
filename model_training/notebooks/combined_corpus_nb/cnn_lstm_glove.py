@@ -11,10 +11,10 @@ from nltk.stem import WordNetLemmatizer
 
 import tensorflow as tf
 from tensorflow.keras.preprocessing.text import Tokenizer
-from keras.preprocessing.sequence import pad_sequences
-from keras.models import Sequential
-from keras.layers import Embedding, LSTM, Dense, Conv1D, GlobalMaxPooling1D, MaxPooling1D
-from keras.callbacks import EarlyStopping
+from tensorflow.keras.preprocessing.sequence import pad_sequences
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Embedding, LSTM, Dense, Conv1D, GlobalMaxPooling1D, MaxPooling1D
+from tensorflow.keras.callbacks import EarlyStopping
 
 from sklearn.metrics import classification_report
 import pickle
@@ -141,11 +141,11 @@ def main():
     print("Numărul de GPU-uri folosite:", strategy.num_replicas_in_sync)
 
     results = []
-    save_dir = "../saved_models"
+    save_dir = "saved_models/cnn_lstm_glove2"
     os.makedirs(save_dir, exist_ok=True)
 
      
-    for model_name in ["LSTM", "CNN", "CNN_LSTM"]:
+    for model_name in ["LSTM"]:
         with strategy.scope():
             if model_name == "LSTM":
                 model = create_lstm_model(max_sequence_length, num_words, embedding_dim, embedding_matrix)
@@ -171,7 +171,7 @@ def main():
         report = classification_report(y_test, y_pred, output_dict=True)
 
         model_path = os.path.join(save_dir, f"{model_name}_GloVe.h5")
-        model.save(model_path)
+        model.save(model_path, save_format='h5', include_optimizer=False)
         print(f"Modelul {model_name} salvat la {model_path}")
 
         results.append({
