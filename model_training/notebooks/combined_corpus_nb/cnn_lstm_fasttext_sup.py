@@ -69,6 +69,15 @@ print("FastText embedding dim =", EMBEDDING_DIM)
 
 tok = Tokenizer(num_words=MAX_NUM_WORDS)
 tok.fit_on_texts(texts)
+from tensorflow.keras.preprocessing.text import tokenizer_from_json
+import json
+
+print("💾 Saving tokenizer as JSON...")
+tokenizer_json = tok.to_json()
+tokenizer_path = os.path.join(SAVE_ROOT, "tokenizer.json")
+with open(tokenizer_path, "w", encoding="utf-8") as f:
+    f.write(tokenizer_json)
+print(f"✅ Tokenizer saved to {tokenizer_path}")
 sequences = tok.texts_to_sequences(texts)
 X = pad_sequences(sequences, maxlen=MAX_SEQ_LEN)
 
@@ -163,24 +172,24 @@ for name, factory in [("LSTM", build_lstm),
     epochs_ran = len(history.history["loss"])
     plt.figure(figsize=(10,4))
 
-    plt.subplot(1,2,1)
-    plt.plot(range(1, epochs_ran+1), history.history["loss"],   label="train")
-    plt.plot(range(1, epochs_ran+1), history.history["val_loss"],label="val")
-    plt.plot(range(1, epochs_ran+1), test_cb.test_losses,       label="test")
-    plt.title(f"{name} Loss")
-    plt.xlabel("Epoch"); plt.ylabel("Loss"); plt.legend()
+    # plt.subplot(1,2,1)
+    # plt.plot(range(1, epochs_ran+1), history.history["loss"],   label="train")
+    # plt.plot(range(1, epochs_ran+1), history.history["val_loss"],label="val")
+    # plt.plot(range(1, epochs_ran+1), test_cb.test_losses,       label="test")
+    # plt.title(f"{name} Loss")
+    # plt.xlabel("Epoch"); plt.ylabel("Loss"); plt.legend()
 
-    plt.subplot(1,2,2)
-    plt.plot(range(1, epochs_ran+1), history.history["accuracy"],      label="train")
-    plt.plot(range(1, epochs_ran+1), history.history["val_accuracy"],  label="val")
-    plt.plot(range(1, epochs_ran+1), test_cb.test_accs,               label="test")
-    plt.title(f"{name} Accuracy")
-    plt.xlabel("Epoch"); plt.ylabel("Accuracy"); plt.legend()
+    # plt.subplot(1,2,2)
+    # plt.plot(range(1, epochs_ran+1), history.history["accuracy"],      label="train")
+    # plt.plot(range(1, epochs_ran+1), history.history["val_accuracy"],  label="val")
+    # plt.plot(range(1, epochs_ran+1), test_cb.test_accs,               label="test")
+    # plt.title(f"{name} Accuracy")
+    # plt.xlabel("Epoch"); plt.ylabel("Accuracy"); plt.legend()
 
-    plt.tight_layout()
-    curve_path = os.path.join(SAVE_ROOT, f"{name}_learning_curve.png")
-    plt.savefig(curve_path)
-    plt.close()
-    print(f"Learning curves saved to {curve_path}")
+    # plt.tight_layout()
+    # curve_path = os.path.join(SAVE_ROOT, f"{name}_learning_curve.png")
+    # plt.savefig(curve_path)
+    # plt.close()
+    # print(f"Learning curves saved to {curve_path}")
 
 print("\nDone training all models.")

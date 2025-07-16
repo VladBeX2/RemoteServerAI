@@ -181,6 +181,33 @@ def predict(data: InputData):
             "label": label,
             "probability": prob
         }
+    elif data.model_name in ["CNN_FASTTEXT", "LSTM_FASTTEXT", "CNN-LSTM_FASTTEXT"]:
+        model_dir = os.path.join(MODELS_DIR, "fasttext_supervised")
+        model_name_clean = data.model_name.replace("_FASTTEXT", "")
+        model_path = os.path.join(model_dir, f"{model_name_clean}_fasttext.h5")
+        tokenizer_path = os.path.join(model_dir, "tokenizer.json")
+
+        if not os.path.exists(model_path):
+            raise HTTPException(status_code=404, detail=f"Model not found: {model_path}")
+        if not os.path.exists(tokenizer_path):
+            raise HTTPException(status_code=404, detail=f"Tokenizer not found: {tokenizer_path}")
+        
+        with open(tokenizer_path, "r", encoding="utf-8") as f:
+            tokenizer = tokenizer_from_json(f.read())
+
+        cleaned_text = wordopt(data.text)
+        sequence = tokenizer.texts_to_sequences([cleaned_text])
+        padded = pad_sequences(sequence, maxlen=100)
+
+        # Încarcă modelul și prezice
+        model = load_model(model_path)
+        prob = float(model.predict(padded)[0][0])
+        label = "REAL" if prob >= 0.5 else "FAKE"
+
+        return {
+            "label": label,
+            "probability": prob
+        }
     else:
         text = wordopt(data.text)
         fname = f"{data.model_name}_GloVe_300d.joblib"
@@ -336,6 +363,27 @@ def explain_with_lime(data: InputData):
             padded = pad_sequences(sequences, maxlen=100)
             preds = model.predict(padded)
             return np.hstack([1 - preds, preds])
+    elif data.model_name in ["CNN_FASTTEXT", "LSTM_FASTTEXT", "CNN-LSTM_FASTTEXT"]:
+        model_dir = os.path.join(MODELS_DIR, "fasttext_supervised")
+        model_name_clean = data.model_name.replace("_FASTTEXT", "")
+        model_path = os.path.join(model_dir, f"{model_name_clean}_fasttext.h5")
+        tokenizer_path = os.path.join(model_dir, "tokenizer.json")
+
+        if not os.path.exists(model_path) or not os.path.exists(tokenizer_path):
+            raise HTTPException(status_code=404, detail="Model or tokenizer not found.")
+        
+        with open(tokenizer_path, "r", encoding="utf-8") as f:
+            tokenizer = tokenizer_from_json(f.read())
+        
+        model = load_model(model_path)
+
+        def classifier_fn(texts: list[str]) -> np.ndarray:
+            cleaned = [wordopt(t) for t in texts]
+            sequences = tokenizer.texts_to_sequences(cleaned)
+            padded = pad_sequences(sequences, maxlen=100)
+            preds = model.predict(padded)
+            return np.hstack([1 - preds, preds])
+
     else:
         cleaned= wordopt(data.text)
         fname = f"{data.model_name}_GloVe_300d.joblib"
